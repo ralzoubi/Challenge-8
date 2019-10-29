@@ -3,7 +3,7 @@ import schedule, time, requests, json, datetime, timedelta
 
 url = "https://booking.cisco.com/scheduler/Web/Services/Authentication/Authenticate"
 #url for booking site authentication
-payload = "{\"username\":\"\",\"password\":\"\"}"
+payload = "{\"username\":\"emaltami\",\"password\":\"\"}"
 #payload for booking site authentication
 headers = {
         'Content-Type': "text/plain",
@@ -24,7 +24,7 @@ urlRes = "https://booking.cisco.com/scheduler/Web/Services/Reservations/"
 payloadRes = " "
 #payload for reservation
 headersRes = {
-        'X-Booked-SessionToken': "f3b809aca27ccb657af2748aa28172b9ebd71723e54eaab0dc",
+        'X-Booked-SessionToken': bookedSessionToken,
         'X-Booked-UserId': "121",
 }
 #header contains the session token we made a variable for to access the booking website
@@ -33,11 +33,36 @@ responseRes = requests.request("GET", urlRes, verify=False, data=payloadRes, hea
 dataRes = responseRes.json()
 #converts responseRes to json format and stores it in dataRes
 
+urlAPIS = "http://ixc-dashboard.cisco.com/api/session"
+
+payloadAPIS = "{\"username\":\"ralzoubi@cisco.com\",\"password\":\"\"}"
+headersAPIS = {
+    'Content-Type': "application/json",
+    'User-Agent': "PostmanRuntime/7.17.1",
+    'Accept': "*/*",
+    'Cache-Control': "no-cache",
+    'Postman-Token': "c626f85f-f666-48ea-8cb0-b36449d34936,d134241d-7154-40ef-b55b-dd55cb463824",
+    'Host': "ixc-dashboard.cisco.com",
+    'Accept-Encoding': "gzip, deflate",
+    'Content-Length': "58",
+    'Cookie': "ObSSOCookie=loggedoutcontinue",
+    'Connection': "keep-alive",
+    'cache-control': "no-cache"
+    }
+
+responseAPIS = requests.request("POST", urlAPIS, data=payloadAPIS, headers=headersAPIS)
+
+extraAPITokenData = responseAPIS.text
+
+BDSessionToken = (extraAPITokenData.strip('{"id": '))
+
+BDSessionToken = (BDSessionToken.split('"')[0])
+
 urlBD = "http://ixc-dashboard.cisco.com/api/card/131/query/json"
 #url used in API call to ixc-dashboard.cisco.com
 headersBD = {
         'Content-Type': "application/json",
-        'X-Metabase-Session': "5a8aa7b6-e4d8-4a71-82a0-0e4eadccb632",
+        'X-Metabase-Session': BDSessionToken,
 }
 #headers for API call to dashboard
 responseBD = requests.request("POST", urlBD, headers=headersBD)
@@ -49,7 +74,7 @@ def getRes():
 #function for getting reservation two days from now
     refNum = ""
     #variable to store the reference number of the reservation two days from now
-    futureDate = datetime.datetime.now() + datetime.timedelta(days=10)
+    futureDate = datetime.datetime.now() + datetime.timedelta(days=2)
     #saving the date two days from now in variable futureDate
     formatDate = (datetime.datetime.strptime(str(futureDate), "%Y-%m-%d %H:%M:%S.%f").strftime('%Y-%m-%d'))
     #formatting the date to allow for comparison with start date from reservation
@@ -100,7 +125,7 @@ def getRes():
             payloadSFDC = ""
             #payload for API call to booking site
             headersSFDC = {
-                'X-Booked-SessionToken': "f3b809aca27ccb657af2748aa28172b9ebd71723e54eaab0dc",
+                'X-Booked-SessionToken': bookedSessionToken,
                 'X-Booked-UserId': "121"
                 }
             #headers for API call to booking site
@@ -128,6 +153,7 @@ def getRes():
                             #static variable storing visit building
                             visitorName = ""
                             #variable storing the full name of the attendee
+                            hostsEmail = ""
                             visitorCompany = ""
                             #variable storing visitor's company name
                             visitorEmail = ""
@@ -175,7 +201,10 @@ def getRes():
                                         visitorCompany = item['value']
                                         #print(visitorCompany)
                                         #here we get the company name
-                                    if 'email' in str(item['name']):
+                                    if 'host_email' in str(item['name']):
+                                        hostsEmail = (item['value'])
+
+                                    if 'email2' in str(item['name']):
                                         visitorEmail = item['value']
                                         listOfEmails.append(visitorEmail)
                                         #print("This is the list of emails: " + str(listOfEmails))
@@ -192,7 +221,7 @@ def getRes():
                                         'Content-Type': "text/plain",
                                         }
                                         #headers for API call to vms
-                                payloadCV = "{\r\n  \"visitBuilding\": \"%s\",\r\n  \"visitorList\": [\r\n    {\r\n      \"visitorCompany\": \"%s\",\r\n      \"visitorEmail\": \"%s\",\r\n      \"visitorFirstName\": \"%s\",\r\n      \"visitorLastName\": \"%s\",\r\n      \"visitComments\": \"\",\r\n      \"visitorMobile\": \"000111\"\r\n    }\r\n  ],\r\n  \"hostEmail\": \"mea-dit\",\r\n  \"visitStartDate\": \"%s\",\r\n  \"visitEndDate\": \"%s\",\r\n \"checkInVisitor\": false,\r\n  \"notifyVisitor\": true,\r\n  \"notifyHost\": true\r\n}\r\n" % (visitBuilding, visitorCompany, listOfEmails[i], listOfFirstNames[i], listOfLastNames[i], startDateTime, endDateTime)
+                                payloadCV = "{\r\n  \"visitBuilding\": \"%s\",\r\n  \"visitorList\": [\r\n    {\r\n      \"visitorCompany\": \"%s\",\r\n      \"visitorEmail\": \"%s\",\r\n      \"visitorFirstName\": \"%s\",\r\n      \"visitorLastName\": \"%s\",\r\n      \"visitComments\": \"\",\r\n      \"visitorMobile\": \"000111\"\r\n    }\r\n  ],\r\n  \"hostEmail\": \"%s\",\r\n  \"visitStartDate\": \"%s\",\r\n  \"visitEndDate\": \"%s\",\r\n \"checkInVisitor\": false,\r\n  \"notifyVisitor\": true,\r\n  \"notifyHost\": true\r\n}\r\n" % (visitBuilding, visitorCompany, listOfEmails[i], listOfFirstNames[i], listOfLastNames[i], hostsEmail, startDateTime, endDateTime)
                                         #payload for API call to vms
                                 print(payloadCV)
                                 responseCV = requests.request("POST", urlCV, verify=False, data=payloadCV, headers=headersCV)
